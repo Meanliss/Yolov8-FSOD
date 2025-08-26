@@ -1,66 +1,60 @@
-Few-Shot Object Detection trên DOTA v1.5 với YOLOv8
-Đây là một dự án demo thử nghiệm phương pháp học ít mẫu (few-shot learning) cho bài toán phát hiện vật thể, sử dụng mô hình YOLOv8 trên một phiên bản tùy chỉnh của bộ dữ liệu DOTA v1.5.
+# Few-Shot Object Detection với YOLOv8 trên DOTA v1.5
+*Một thử nghiệm về phương pháp huấn luyện 2 giai đoạn cho các lớp đối tượng hiếm (Few-Shot Learning).*
 
-📝 Tổng quan
-Trong các bài toán thực tế, việc thu thập và gán nhãn cho các lớp đối tượng hiếm (novel class) thường rất tốn kém. Hướng tiếp cận few-shot learning giúp mô hình học cách nhận biết các lớp mới chỉ với một vài ví dụ.
+---
 
-Do thời gian và tài nguyên có hạn, dự án này được thực hiện trên một bộ dữ liệu đã qua xử lý:
+## 📝 Tổng quan Dự án
 
-Tạo Dataset con: Từ bộ DOTA v1.5 gốc, dữ liệu được cắt và lọc để tạo ra một bộ dataset nhỏ hơn chỉ chứa 3 lớp đối tượng.
+Dự án này trình bày một phương pháp học ít mẫu (few-shot learning) cho bài toán phát hiện vật thể, sử dụng mô hình **YOLOv8** trên một phiên bản tùy chỉnh của bộ dữ liệu **DOTA v1.5**. Mục tiêu là kiểm tra khả năng của mô hình trong việc học và nhận diện các lớp đối tượng hiếm (novel classes) chỉ với một vài ví dụ.
 
-Phân loại Class: 3 lớp này được chia thành:
+Do giới hạn về tài nguyên, một bộ dữ liệu con đã được tạo ra từ DOTA v1.5, bao gồm **3 lớp đối tượng**, được phân loại như sau:
+* **2 Base Classes:** Các lớp phổ biến, có nhiều dữ liệu.
+* **1 Novel Class:** Lớp hiếm, có rất ít dữ liệu.
 
-2 Base Classes: Các lớp phổ biến, có nhiều dữ liệu.
+---
 
-1 Novel Class: Lớp hiếm, có rất ít dữ liệu.
+## ⚙️ Phương pháp & Kỹ thuật
 
-Mục tiêu của dự án là kiểm chứng một phương pháp huấn luyện 2 giai đoạn để cải thiện khả năng nhận diện Novel Class mà không làm suy giảm hiệu suất trên các Base Classes.
+Phương pháp được lấy cảm hứng từ TFA (Two-stage Fine-tuning Approach) và được điều chỉnh để áp dụng cho kiến trúc YOLOv8.
 
-⚙️ Phương pháp tiếp cận
-Phương pháp được lấy cảm hứng từ TFA (Two-stage Fine-tuning Approach), thường thấy trong các mô hình như Faster R-CNN, và được áp dụng cho YOLOv8.
+### Giai đoạn 1: Base Training
+Mô hình YOLOv8 được huấn luyện trên toàn bộ dữ liệu của 3 lớp. Giai đoạn này nhằm mục đích trang bị cho mô hình kiến thức nền tảng về các đặc trưng chung (cạnh, góc, texture) và khả năng nhận diện tốt các lớp Base Class.
 
-Giai đoạn 1: Base Training
-Ở giai đoạn này, mô hình YOLOv8 được huấn luyện một cách thông thường trên toàn bộ dữ liệu của 3 lớp.
+### Giai đoạn 2: Fine-tuning cho Lớp Novel
+"Base model" từ Giai đoạn 1 được tinh chỉnh trên một tập dữ liệu được chuẩn bị đặc biệt, với tỉ lệ **80%** ảnh chứa Novel Class và **20%** ảnh chỉ chứa Base Class.
 
-Mục tiêu: Giúp mô hình học các đặc trưng chung (cạnh, góc, texture) và học cách nhận diện tốt 2 lớp Base Class. Kết quả của giai đoạn này là một "base model" có nền tảng kiến thức vững chắc.
+Một kỹ thuật then chốt được sử dụng trong giai đoạn này là **Đóng băng các lớp (Layer Freezing)**. Hầu hết các lớp trong mạng (phần backbone - chịu trách nhiệm trích xuất đặc trưng) được đóng băng, chỉ để lại các lớp cuối cùng (lớp detection head - chịu trách nhiệm phân loại và định vị) được phép cập nhật trọng số.
 
-Giai đoạn 2: Fine-tuning cho Lớp Novel
-Đây là giai đoạn cốt lõi của thử nghiệm. "Base model" từ Giai đoạn 1 được tinh chỉnh (fine-tune) trên một tập dữ liệu được chuẩn bị đặc biệt.
+> **Logic đằng sau Layer Freezing:** Kỹ thuật này giữ lại toàn bộ kiến thức về đặc trưng hình ảnh mà mô hình đã học được ở Giai đoạn 1. Việc chỉ cập nhật các lớp cuối giúp mô hình tập trung toàn bộ "năng lượng học" vào việc liên kết các đặc trưng hiện có với một cái nhãn mới (Novel Class), thay vì phải học lại từ đầu. Điều này giúp tăng hiệu quả huấn luyện cho lớp hiếm và chống lại hiện tượng "quên" kiến thức về các lớp phổ biến (Catastrophic Forgetting).
 
-Chuẩn bị dữ liệu: Một tập dữ liệu mới được tạo ra với tỉ lệ mất cân bằng có chủ đích:
+---
 
-80% dữ liệu chứa các ảnh có Novel Class.
+## 📊 Kết quả & Phân tích
 
-20% dữ liệu là các ảnh chỉ chứa Base Class.
+Kết quả so sánh hiệu suất giữa mô hình sau Giai đoạn 1 và Giai đoạn 2 cho thấy:
 
-Mục đích là để "ép" mô hình tập trung học vào các đặc điểm của lớp hiếm.
+* **Về Novel Class:** Khả năng nhận diện lớp hiếm **không cho thấy sự cải thiện**. Mô hình gần như không đưa ra dự đoán nào cho lớp này.
+* **Về Chỉ số Tổng quan (mAP):** Mặc dù vậy, chỉ số mAP tổng thể của mô hình sau Giai đoạn 2 **thực sự đã tăng lên** so với Giai đoạn 1.
 
-Đóng băng các lớp (Layer Freezing): Trước khi huấn luyện, hầu hết các lớp trong mạng (phần backbone) được đóng băng (freeze), chỉ để lại các lớp cuối cùng (lớp detection head) được phép cập nhật trọng số.
+---
 
-🧠 Giải thích về Layer Freezing
-Có thể hình dung mô hình YOLOv8 như một chuyên gia phân tích hình ảnh. Các lớp đầu và giữa (backbone) giống như đôi mắt và vùng não thị giác. Sau Giai đoạn 1, "đôi mắt" này đã rất giỏi trong việc nhận ra các đặc trưng cơ bản như hình dạng tàu thủy, cánh máy bay (Base Classes).
+## 💡 Thảo luận & Hướng phát triển
 
-Việc đóng băng các lớp này tương đương với việc ra lệnh: "Giữ nguyên khả năng nhìn và nhận biết đặc trưng đã học được, không thay đổi nó."
+Việc mô hình chưa nhận diện được Novel Class có thể được giải thích là do **số lượng mẫu và thời gian huấn luyện (epoch) còn quá ít**.
 
-Các lớp cuối (detection head) thì giống như vùng não ra quyết định và dán nhãn. Bằng cách chỉ huấn luyện các lớp này, thông điệp được gửi đến là: "Sử dụng khả năng nhìn siêu việt có sẵn để học cách dán một cái nhãn mới (Novel Class) cho một vật thể lạ. Không cần học lại cách nhìn, chỉ cần học cách gọi tên cái mới."
+Tuy nhiên, sự cải thiện của chỉ số mAP tổng thể là một tín hiệu tích cực, cho thấy phương pháp fine-tuning đã giúp mô hình cân bằng và tối ưu hóa các quyết định của mình. Điều này cho thấy tiềm năng của phương pháp: nếu được huấn luyện với quy mô lớn hơn, khả năng nhận diện Novel Class có thể sẽ được cải thiện đáng kể.
 
-Kết quả: Kỹ thuật này giúp mô hình dồn toàn bộ tài nguyên học vào việc nhận diện Novel Class mà không làm xáo trộn hay "quên" đi kiến thức về các Base Class đã được huấn luyện kỹ. Đây là cách để chống lại hiện tượng "Catastrophic Forgetting" (Quên thảm khốc).
+**Các hướng phát triển tiếp theo:**
+* Tăng số lượng ảnh cho Novel Class trong Giai đoạn 2.
+* Tăng số epoch huấn luyện cho Giai đoạn 2.
+* Thử nghiệm các chiến lược fine-tuning khác (ví dụ: unfreeze một vài lớp cuối của backbone).
 
-📊 Kết quả và Phân tích
-So sánh hiệu suất của model sau Giai đoạn 1 và Giai đoạn 2 cho thấy các kết quả sau:
+---
 
-Khả năng nhận diện Novel Class: Khả năng đoán đúng Novel Class không tăng sau Giai đoạn 2. Mô hình gần như không đưa ra dự đoán nào cho lớp này (chỉ có một lần dự đoán nhưng không chính xác).
+## 🛠️ Yêu cầu Cài đặt
 
-Chỉ số tổng quan: Tuy nhiên, một điểm sáng là các chỉ số tổng quan (ví dụ: mAP) của mô hình sau Giai đoạn 2 thực sự đã cải thiện so với Giai đoạn 1.
-
-Thảo luận
-Việc mô hình chưa nhận diện được Novel Class có thể là do số lượng mẫu và thời gian huấn luyện (epoch) còn quá ít, khiến mô hình chưa có đủ cơ hội để học các đặc trưng của lớp hiếm.
-
-Mặc dù vậy, việc chỉ số tổng quan tăng cho thấy phương pháp fine-tuning về cơ bản là có hiệu quả, giúp mô hình cân bằng lại quyết định của mình tốt hơn. Có thể giả định rằng, nếu thử nghiệm này được mở rộng với quy mô lớn hơn (nhiều dữ liệu cho lớp novel hơn và training lâu hơn), phương pháp tiếp cận 2 giai đoạn này hoàn toàn có tiềm năng cải thiện đáng kể khả năng phát hiện các lớp đối tượng hiếm.
-
-🚀 Hướng phát triển
-Tăng số lượng ảnh cho Novel Class trong Giai đoạn 2.
-
-Tăng số epoch huấn luyện cho Giai đoạn 2.
-
-Thử nghiệm các chiến lược fine-tuning khác.
+Dự án được xây dựng dựa trên các thư viện chính sau:
+* `ultralytics`
+* `torch`
+* `numpy`
+* `opencv-python`
