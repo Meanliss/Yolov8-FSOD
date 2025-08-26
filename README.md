@@ -55,13 +55,13 @@ The training followed a **Two-Stage Fine-tuning Approach (TFA)**, adapted for th
 ### 4.2 Qualitative Results  
 
 #### Model Stage 1 Predictions  
-![Stage 1 Results](Screenshot 2025-08-26 190358.png)  
+![Stage 1 Results](1.png)  
 - The detector identifies ships with moderate confidence.  
 - Predictions are scattered, with some false positives.  
 - No detections for the novel class.  
 
 #### Model Stage 2 Predictions (Fine-tuned)  
-![Stage 2 Results](59449e48-8e14-42c0-81b6-21635d625e6e.png)  
+![Stage 2 Results](2.png)  
 - Predictions for ships appear slightly more compact and confident.  
 - False positives are reduced compared to Stage 1.  
 - Still no detection of the novel class.  
